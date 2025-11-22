@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     MAX_UPLOAD_SIZE: int = 10 * 1024 * 1024  # 10MB
 
     # CORS Configuration
-    CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000,https://*.railway.app,https://*.up.railway.app"
+    CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000,https://frontend-imobiliaria.vercel.app,https://*.vercel.app"
     ENVIRONMENT: str = "development"
 
     class Config:
