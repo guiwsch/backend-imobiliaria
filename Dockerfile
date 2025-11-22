@@ -26,4 +26,4 @@ EXPOSE 8080
 
 # Comando para iniciar a aplicação
 # Railway fornece a variável PORT automaticamente
-CMD uvicorn main:app --host 0.0.0.0 --port $PORT
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"]
