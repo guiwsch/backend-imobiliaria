@@ -21,8 +21,9 @@ COPY . .
 # Cria diretório de uploads
 RUN mkdir -p uploads
 
-# Expõe a porta
+# Expõe a porta (Railway usa a variável PORT)
 EXPOSE 8000
 
 # Comando para iniciar a aplicação
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Usa shell form para permitir substituição de variáveis
+CMD uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}
