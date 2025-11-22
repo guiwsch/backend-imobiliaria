@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     MAX_UPLOAD_SIZE: int = 10 * 1024 * 1024  # 10MB
 
     # CORS Configuration
-    CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
+    CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000,https://*.railway.app,https://*.up.railway.app"
     ENVIRONMENT: str = "development"
 
     class Config:
