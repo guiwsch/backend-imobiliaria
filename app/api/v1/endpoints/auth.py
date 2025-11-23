@@ -53,15 +53,27 @@ def login(
     db: Session = Depends(get_db),
 ):
     try:
+        logger.info(f"Login attempt for username: {credentials.username}")
+
         user = db.query(User).filter(User.username == credentials.username).first()
 
-        if not user or not verify_password(credentials.password, user.hashed_password):
+        if not user:
+            logger.warning(f"User not found: {credentials.username}")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Incorrect username or password",
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
+        if not verify_password(credentials.password, user.hashed_password):
+            logger.warning(f"Invalid password for user: {credentials.username}")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Incorrect username or password",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        logger.info(f"Creating tokens for user: {user.username}")
         access_token = create_access_token(
             data={"user_id": user.id, "username": user.username, "email": user.email}
         )
@@ -69,15 +81,18 @@ def login(
             data={"user_id": user.id, "username": user.username}
         )
 
+        logger.info(f"Login successful for user: {user.username}")
         return {"access": access_token, "refresh": refresh_token}
+    except HTTPException:
+        raise
     except SQLAlchemyError as e:
-        logger.error(f"Database error during login: {str(e)}")
+        logger.error(f"Database error during login: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Database connection error",
         )
     except Exception as e:
-        logger.error(f"Unexpected error during login: {str(e)}")
+        logger.error(f"Unexpected error during login: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error",

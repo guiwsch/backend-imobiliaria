@@ -18,6 +18,7 @@ class Settings(BaseSettings):
 
     # CORS Configuration
     CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000,https://frontend-imobiliaria.vercel.app,https://*.vercel.app"
+    FRONTEND_URL: Optional[str] = None
     ENVIRONMENT: str = "development"
 
     class Config:
