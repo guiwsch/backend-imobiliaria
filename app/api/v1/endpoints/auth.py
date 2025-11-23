@@ -2,17 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.core.security import verify_password, create_access_token, create_refresh_token, decode_token, get_password_hash
-from app.core.deps import get_current_user
-from app.schemas.user import (
-    Token,
-    TokenRefresh,
-    LoginRequest,
-    UserCreate,
-    User as UserSchema,
-    UserProfile,
-    UserProfileUpdate,
-    ChangePassword
-)
+from app.schemas.user import Token, TokenRefresh, LoginRequest, UserCreate, User as UserSchema
 from app.models.user import User
 
 router = APIRouter()
@@ -110,74 +100,3 @@ def refresh_token(
     )
 
     return {"access": access_token, "refresh": refresh_token}
-
-
-@router.get("/user/", response_model=UserProfile)
-def get_user_profile(
-    current_user: User = Depends(get_current_user),
-):
-    """Obtém o perfil do usuário autenticado"""
-    return current_user
-
-
-@router.put("/user/", response_model=UserProfile)
-def update_user_profile(
-    profile_data: UserProfileUpdate,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    """Atualiza o perfil do usuário autenticado"""
-
-    # Verificar se o username está sendo alterado e já existe
-    if profile_data.username and profile_data.username != current_user.username:
-        existing_user = db.query(User).filter(User.username == profile_data.username).first()
-        if existing_user:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Username already taken",
-            )
-        current_user.username = profile_data.username
-
-    # Verificar se o email está sendo alterado e já existe
-    if profile_data.email and profile_data.email != current_user.email:
-        existing_email = db.query(User).filter(User.email == profile_data.email).first()
-        if existing_email:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email already registered",
-            )
-        current_user.email = profile_data.email
-
-    # Atualizar first_name e last_name
-    if profile_data.first_name is not None:
-        current_user.first_name = profile_data.first_name
-
-    if profile_data.last_name is not None:
-        current_user.last_name = profile_data.last_name
-
-    db.commit()
-    db.refresh(current_user)
-
-    return current_user
-
-
-@router.post("/change-password/", status_code=status.HTTP_200_OK)
-def change_password(
-    password_data: ChangePassword,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    """Altera a senha do usuário autenticado"""
-
-    # Verificar senha atual
-    if not verify_password(password_data.old_password, current_user.hashed_password):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Incorrect password",
-        )
-
-    # Atualizar senha
-    current_user.hashed_password = get_password_hash(password_data.new_password)
-    db.commit()
-
-    return {"message": "Password changed successfully"}

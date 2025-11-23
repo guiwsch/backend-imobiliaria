@@ -4,14 +4,8 @@ from typing import List, Optional
 from app.db.session import get_db
 from app.core.deps import get_current_user
 from app.models.lead import Lead
-from app.models.imovel import Imovel
-from app.models.configuracao import Configuracao
 from app.models.user import User
 from app.schemas.lead import Lead as LeadSchema, LeadCreate, LeadUpdate
-from app.services.email_service import email_service
-import logging
-
-logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -25,34 +19,6 @@ def create_contato(
     db.add(db_lead)
     db.commit()
     db.refresh(db_lead)
-
-    # Enviar notificação por email
-    try:
-        # Buscar configurações para pegar email do admin
-        config = db.query(Configuracao).first()
-
-        if config and config.notificacao_email and config.email:
-            # Preparar dados do lead
-            lead_data = {
-                'nome': db_lead.nome,
-                'email': db_lead.email,
-                'telefone': db_lead.telefone,
-                'origem': db_lead.origem or 'Site',
-                'mensagem': db_lead.mensagem,
-            }
-
-            # Adicionar título do imóvel se houver
-            if db_lead.imovel_id:
-                imovel = db.query(Imovel).filter(Imovel.id == db_lead.imovel_id).first()
-                if imovel:
-                    lead_data['imovel_titulo'] = imovel.titulo
-
-            # Enviar email
-            email_service.send_new_lead_notification(lead_data, config.email)
-            logger.info(f"Notificação de novo lead enviada para: {config.email}")
-    except Exception as e:
-        logger.error(f"Erro ao enviar notificação de lead: {str(e)}")
-        # Não falhar a requisição se o email falhar
 
     return db_lead
 

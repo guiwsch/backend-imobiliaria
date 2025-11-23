@@ -12,10 +12,6 @@ from app.models.configuracao import Configuracao
 from app.models.user import User
 from app.schemas.visita import Visita as VisitaSchema, VisitaCreate, VisitaUpdate
 from app.schemas.configuracao import Configuracao as ConfiguracaoSchema, ConfiguracaoUpdate
-from app.services.email_service import email_service
-import logging
-
-logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -91,32 +87,6 @@ def create_visita(
     db.add(db_visita)
     db.commit()
     db.refresh(db_visita)
-
-    # Enviar notificação por email
-    try:
-        # Buscar configurações para pegar email do admin
-        config = db.query(Configuracao).first()
-
-        if config and config.notificacao_email and config.email:
-            # Buscar dados do lead
-            lead = db.query(Lead).filter(Lead.id == db_visita.lead_id).first()
-
-            # Preparar dados da visita
-            visit_data = {
-                'lead_nome': lead.nome if lead else 'N/A',
-                'lead_telefone': lead.telefone if lead else 'N/A',
-                'imovel_titulo': imovel.titulo,
-                'data_visita': db_visita.data_hora.strftime('%d/%m/%Y') if db_visita.data_hora else 'N/A',
-                'horario': db_visita.data_hora.strftime('%H:%M') if db_visita.data_hora else 'N/A',
-                'observacoes': db_visita.observacoes,
-            }
-
-            # Enviar email
-            email_service.send_visit_scheduled_notification(visit_data, config.email)
-            logger.info(f"Notificação de visita agendada enviada para: {config.email}")
-    except Exception as e:
-        logger.error(f"Erro ao enviar notificação de visita: {str(e)}")
-        # Não falhar a requisição se o email falhar
 
     return db_visita
 
