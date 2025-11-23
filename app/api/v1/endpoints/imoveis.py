@@ -15,6 +15,10 @@ import os
 import shutil
 from datetime import datetime
 from app.core.config import settings
+from app.services.cloudinary_service import cloudinary_service
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -268,42 +272,71 @@ async def upload_imagem(
             detail="Imóvel não encontrado",
         )
 
-    # Cria diretório de uploads se não existir
-    upload_dir = os.path.join(settings.UPLOAD_DIR, "imoveis", str(imovel_id))
-    os.makedirs(upload_dir, exist_ok=True)
+    try:
+        if settings.USE_CLOUDINARY:
+            # Upload para Cloudinary
+            logger.info(f"Fazendo upload de imagem para Cloudinary - Imóvel ID: {imovel_id}")
 
-    # Gera nome único para o arquivo
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    file_extension = os.path.splitext(file.filename)[1]
-    filename = f"{timestamp}{file_extension}"
-    file_path = os.path.join(upload_dir, filename)
+            # Gera public_id único
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            public_id = f"imovel_{imovel_id}_{timestamp}"
 
-    # Salva o arquivo
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+            result = await cloudinary_service.upload_image(
+                file=file,
+                folder=f"imobiliaria/imoveis/{imovel_id}",
+                public_id=public_id
+            )
 
-    # Cria registro no banco
-    imagem_url = f"/uploads/imoveis/{imovel_id}/{filename}"
+            imagem_url = result["secure_url"]
+            cloudinary_public_id = result["public_id"]
 
-    # Se for principal, remove principal de outras imagens
-    if principal:
-        db.query(ImovelImagem).filter(
-            ImovelImagem.imovel_id == imovel_id
-        ).update({"principal": False})
+            logger.info(f"Upload para Cloudinary concluído: {cloudinary_public_id}")
+        else:
+            # Upload local (fallback)
+            logger.info(f"Fazendo upload local - Imóvel ID: {imovel_id}")
 
-    db_imagem = ImovelImagem(
-        imovel_id=imovel_id,
-        imagem_url=imagem_url,
-        ordem=ordem,
-        principal=principal,
-    )
-    db.add(db_imagem)
-    db.commit()
-    db.refresh(db_imagem)
+            upload_dir = os.path.join(settings.UPLOAD_DIR, "imoveis", str(imovel_id))
+            os.makedirs(upload_dir, exist_ok=True)
 
-    return {
-        "id": db_imagem.id,
-        "imagem_url": db_imagem.imagem_url,
-        "ordem": db_imagem.ordem,
-        "principal": db_imagem.principal,
-    }
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            file_extension = os.path.splitext(file.filename)[1]
+            filename = f"{timestamp}{file_extension}"
+            file_path = os.path.join(upload_dir, filename)
+
+            with open(file_path, "wb") as buffer:
+                shutil.copyfileobj(file.file, buffer)
+
+            imagem_url = f"/uploads/imoveis/{imovel_id}/{filename}"
+            cloudinary_public_id = None
+
+        # Se for principal, remove principal de outras imagens
+        if principal:
+            db.query(ImovelImagem).filter(
+                ImovelImagem.imovel_id == imovel_id
+            ).update({"principal": False})
+
+        # Cria registro no banco
+        db_imagem = ImovelImagem(
+            imovel_id=imovel_id,
+            imagem_url=imagem_url,
+            ordem=ordem,
+            principal=principal,
+        )
+        db.add(db_imagem)
+        db.commit()
+        db.refresh(db_imagem)
+
+        return {
+            "id": db_imagem.id,
+            "imagem_url": db_imagem.imagem_url,
+            "ordem": db_imagem.ordem,
+            "principal": db_imagem.principal,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Erro ao fazer upload de imagem: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao fazer upload da imagem: {str(e)}"
+        )

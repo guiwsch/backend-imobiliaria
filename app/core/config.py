@@ -16,6 +16,12 @@ class Settings(BaseSettings):
     UPLOAD_DIR: str = "uploads"
     MAX_UPLOAD_SIZE: int = 10 * 1024 * 1024  # 10MB
 
+    # Cloudinary Configuration
+    CLOUDINARY_CLOUD_NAME: Optional[str] = None
+    CLOUDINARY_API_KEY: Optional[str] = None
+    CLOUDINARY_API_SECRET: Optional[str] = None
+    USE_CLOUDINARY: bool = False  # Se True, usa Cloudinary; se False, usa armazenamento local
+
     # CORS Configuration
     CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000,https://frontend-imobiliaria.vercel.app,https://*.vercel.app"
     FRONTEND_URL: Optional[str] = None
