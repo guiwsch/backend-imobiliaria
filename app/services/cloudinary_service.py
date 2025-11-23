@@ -12,16 +12,31 @@ class CloudinaryService:
     """Serviço para gerenciar upload de imagens no Cloudinary"""
 
     def __init__(self):
-        if settings.USE_CLOUDINARY:
+        self._configured = False
+        self._config_attempted = False
+
+    def _ensure_configured(self):
+        """Configura o Cloudinary apenas quando necessário (lazy loading)"""
+        if self._config_attempted:
+            return
+
+        self._config_attempted = True
+
+        if not settings.USE_CLOUDINARY:
+            logger.info("Cloudinary está desabilitado (USE_CLOUDINARY=false)")
+            return
+
+        try:
             if not all([
                 settings.CLOUDINARY_CLOUD_NAME,
                 settings.CLOUDINARY_API_KEY,
                 settings.CLOUDINARY_API_SECRET
             ]):
-                raise ValueError(
+                logger.warning(
                     "Cloudinary está habilitado mas as credenciais não foram configuradas. "
                     "Defina CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY e CLOUDINARY_API_SECRET"
                 )
+                return
 
             cloudinary.config(
                 cloud_name=settings.CLOUDINARY_CLOUD_NAME,
@@ -29,7 +44,10 @@ class CloudinaryService:
                 api_secret=settings.CLOUDINARY_API_SECRET,
                 secure=True
             )
-            logger.info("Cloudinary configurado com sucesso")
+            self._configured = True
+            logger.info(f"Cloudinary configurado com sucesso - Cloud Name: {settings.CLOUDINARY_CLOUD_NAME}")
+        except Exception as e:
+            logger.error(f"Erro ao configurar Cloudinary: {str(e)}", exc_info=True)
 
     async def upload_image(
         self,
@@ -50,10 +68,13 @@ class CloudinaryService:
         Returns:
             Dict contendo url, secure_url e public_id da imagem
         """
-        if not settings.USE_CLOUDINARY:
+        # Garante que Cloudinary está configurado
+        self._ensure_configured()
+
+        if not settings.USE_CLOUDINARY or not self._configured:
             raise HTTPException(
                 status_code=500,
-                detail="Cloudinary não está habilitado"
+                detail="Cloudinary não está habilitado ou configurado corretamente"
             )
 
         try:
@@ -126,7 +147,9 @@ class CloudinaryService:
         Returns:
             True se deletado com sucesso
         """
-        if not settings.USE_CLOUDINARY:
+        self._ensure_configured()
+
+        if not settings.USE_CLOUDINARY or not self._configured:
             return False
 
         try:
@@ -158,7 +181,9 @@ class CloudinaryService:
         Returns:
             URL da imagem com transformações aplicadas
         """
-        if not settings.USE_CLOUDINARY:
+        self._ensure_configured()
+
+        if not settings.USE_CLOUDINARY or not self._configured:
             return ""
 
         transformation = {
