@@ -17,6 +17,22 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Log de configurações (sem expor segredos completos)
+logger.info(f"Environment: {settings.ENVIRONMENT}")
+logger.info(f"USE_CLOUDINARY: {settings.USE_CLOUDINARY}")
+if settings.CLOUDINARY_CLOUD_NAME:
+    logger.info(f"CLOUDINARY_CLOUD_NAME: {settings.CLOUDINARY_CLOUD_NAME}")
+else:
+    logger.warning("CLOUDINARY_CLOUD_NAME não está configurado!")
+if settings.CLOUDINARY_API_KEY:
+    logger.info(f"CLOUDINARY_API_KEY: {settings.CLOUDINARY_API_KEY[:8]}...")
+else:
+    logger.warning("CLOUDINARY_API_KEY não está configurado!")
+if settings.CLOUDINARY_API_SECRET:
+    logger.info(f"CLOUDINARY_API_SECRET: configurado (oculto)")
+else:
+    logger.warning("CLOUDINARY_API_SECRET não está configurado!")
+
 # Cria tabelas do banco de dados
 try:
     logger.info("Creating database tables...")
