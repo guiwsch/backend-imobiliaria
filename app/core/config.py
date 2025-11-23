@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings
 from typing import Optional
+from pydantic import field_validator
 
 
 class Settings(BaseSettings):
@@ -26,6 +27,16 @@ class Settings(BaseSettings):
     CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000,https://frontend-imobiliaria.vercel.app,https://*.vercel.app"
     FRONTEND_URL: Optional[str] = None
     ENVIRONMENT: str = "development"
+
+    @field_validator('USE_CLOUDINARY', mode='before')
+    @classmethod
+    def parse_use_cloudinary(cls, v):
+        """Aceita variações de true/false para USE_CLOUDINARY"""
+        if isinstance(v, bool):
+            return v
+        if isinstance(v, str):
+            return v.lower() in ('true', '1', 'yes', 't', 'y')
+        return bool(v)
 
     class Config:
         env_file = ".env"
